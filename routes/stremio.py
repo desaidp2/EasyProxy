@@ -30,6 +30,7 @@ def _parse(kind,item):
 
 def setup_stremio_routes(app,proxy):
     async def manifest(request):
+        logger.warning("STREMIO_DIAG manifest hit method=%s path=%s", request.method, request.path)
         if not _auth(request):
             response = web.json_response({"error":"Unauthorized"}, status=401)
         else:
@@ -39,6 +40,7 @@ def setup_stremio_routes(app,proxy):
         response.headers["Access-Control-Allow-Headers"] = "*"
         return response
     async def streams(request):
+        logger.warning("STREMIO_DIAG streams hit method=%s path=%s", request.method, request.path)
         if not _auth(request):return web.json_response({"streams":[]},status=401)
         kind,item=request.match_info["type"],request.match_info["item_id"]
         parsed=_parse(kind,item)
@@ -67,8 +69,10 @@ def setup_stremio_routes(app,proxy):
     # These endpoints are read-only, so accept those methods and return the same
     # JSON payload rather than letting aiohttp emit a confusing 405.
     if API_PASSWORD:
+        logger.warning("STREMIO_DIAG registering token routes; API_PASSWORD configured=%s", bool(API_PASSWORD))
         app.router.add_route("*", "/stremio/{token}/manifest.json", manifest)
         app.router.add_route("*", "/stremio/{token}/stream/{type}/{item_id}.json", streams)
     else:
+        logger.warning("STREMIO_DIAG registering open routes; API_PASSWORD configured=%s", bool(API_PASSWORD))
         app.router.add_route("*", "/stremio/manifest.json", manifest)
         app.router.add_route("*", "/stremio/stream/{type}/{item_id}.json", streams)
