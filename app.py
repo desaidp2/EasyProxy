@@ -24,6 +24,7 @@ from services.recording_manager import RecordingManager
 from routes.recordings import setup_recording_routes
 from routes.wg_tunnels import setup_wg_tunnel_routes
 from routes.tor_proxy import setup_tor_proxy_routes
+from routes.stremio import setup_stremio_routes
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,7 @@ def create_app():
     )
     app['recording_manager'] = recording_manager
     
+    setup_stremio_routes(app, proxy)
     # Registra le route
     app.router.add_get('/', proxy.handle_root)
     app.router.add_get('/docs', proxy.handle_docs)
