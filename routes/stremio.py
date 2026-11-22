@@ -65,14 +65,12 @@ def setup_stremio_routes(app,proxy):
         except Exception:
             logger.exception("Stremio resolver failed for %s",item)
             return web.json_response({"streams":[]})
-    # Addon clients and link checkers may probe with HEAD, OPTIONS, or POST.
-    # These endpoints are read-only, so accept those methods and return the same
-    # JSON payload rather than letting aiohttp emit a confusing 405.
-    if API_PASSWORD:
-        logger.warning("STREMIO_DIAG registering token routes; API_PASSWORD configured=%s", bool(API_PASSWORD))
-        app.router.add_route("*", "/stremio/{token}/manifest.json", manifest)
-        app.router.add_route("*", "/stremio/{token}/stream/{type}/{item_id}.json", streams)
-    else:
-        logger.warning("STREMIO_DIAG registering open routes; API_PASSWORD configured=%s", bool(API_PASSWORD))
-        app.router.add_route("*", "/stremio/manifest.json", manifest)
-        app.router.add_route("*", "/stremio/stream/{type}/{item_id}.json", streams)
+    # Register both URL forms. When API_PASSWORD is configured, the token
+    # route validates it; without a password, the token route remains open too.
+    # This keeps the documented /stremio/{token}/manifest.json URL valid
+    # even on deployments that intentionally have no API_PASSWORD.
+    logger.warning("STREMIO_DIAG registering Stremio routes; API_PASSWORD configured=%s", bool(API_PASSWORD))
+    app.router.add_route("*", "/stremio/{token}/manifest.json", manifest)
+    app.router.add_route("*", "/stremio/{token}/stream/{type}/{item_id}.json", streams)
+    app.router.add_route("*", "/stremio/manifest.json", manifest)
+    app.router.add_route("*", "/stremio/stream/{type}/{item_id}.json", streams)
