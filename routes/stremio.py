@@ -30,8 +30,14 @@ def _parse(kind,item):
 
 def setup_stremio_routes(app,proxy):
     async def manifest(request):
-        if not _auth(request):return web.json_response({"error":"Unauthorized"},status=401)
-        return web.json_response({"id":ADDON_ID,"version":"1.0.0","name":"EasyProxy Movies & Series","description":"Stream resolver for Cinemeta IMDb movie and episode IDs.","resources":["stream"],"types":["movie","series"],"idPrefixes":["tt"],"behaviorHints":{"configurable":False,"configurationRequired":False}})
+        if not _auth(request):
+            response = web.json_response({"error":"Unauthorized"}, status=401)
+        else:
+            response = web.json_response({"id":ADDON_ID,"version":"1.0.0","name":"EasyProxy Movies & Series","description":"Stream resolver for Cinemeta IMDb movie and episode IDs.","resources":["stream"],"types":["movie","series"],"idPrefixes":["tt"],"behaviorHints":{"configurable":False,"configurationRequired":False}})
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
     async def streams(request):
         if not _auth(request):return web.json_response({"streams":[]},status=401)
         kind,item=request.match_info["type"],request.match_info["item_id"]
@@ -57,9 +63,12 @@ def setup_stremio_routes(app,proxy):
         except Exception:
             logger.exception("Stremio resolver failed for %s",item)
             return web.json_response({"streams":[]})
+    # Addon clients and link checkers may probe with HEAD, OPTIONS, or POST.
+    # These endpoints are read-only, so accept those methods and return the same
+    # JSON payload rather than letting aiohttp emit a confusing 405.
     if API_PASSWORD:
-        app.router.add_get("/stremio/{token}/manifest.json",manifest)
-        app.router.add_get("/stremio/{token}/stream/{type}/{item_id}.json",streams)
+        app.router.add_route("*", "/stremio/{token}/manifest.json", manifest)
+        app.router.add_route("*", "/stremio/{token}/stream/{type}/{item_id}.json", streams)
     else:
-        app.router.add_get("/stremio/manifest.json",manifest)
-        app.router.add_get("/stremio/stream/{type}/{item_id}.json",streams)
+        app.router.add_route("*", "/stremio/manifest.json", manifest)
+        app.router.add_route("*", "/stremio/stream/{type}/{item_id}.json", streams)
